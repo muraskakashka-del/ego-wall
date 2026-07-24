@@ -7,12 +7,11 @@ app = Flask(__name__)
 king_data = {
     "name": "💎 ТВОЙ НИК (АДМИН) 💎",
     "link": "https://telegram.org",
-    "price": 100.00  # Начальная цена в сомах (KGS)
+    "price": 100.00  # Цена в сомах (KGS)
 }
 
-# Ссылка на твой кошелек О!Деньги (кабинет/форма оплаты)
-# Замени эту ссылку на свою личную форму оплаты или ссылку на перевод!
-MY_O_WALLET_LINK = "https://o.kg" 
+# ВПИШИ СЮДА СВОЙ НОМЕР ТЕЛЕФОНА О! ДЛЯ ПОПОЛНЕНИЯ БАЛАНСА
+MY_PHONE_NUMBER = "0708333334" 
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -65,6 +64,11 @@ HTML_TEMPLATE = """
             color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 800; 
             text-transform: uppercase; cursor: pointer; box-shadow: 0 4px 20px rgba(255, 0, 127, 0.4);
         }
+        .instruction-box {
+            background: rgba(255, 0, 127, 0.1); border: 1px dashed #ff007f;
+            padding: 15px; border-radius: 12px; margin-top: 20px; text-align: left; font-size: 14px;
+        }
+        .instruction-box b { color: #00ffff; }
     </style>
 </head>
 <body>
@@ -86,15 +90,23 @@ HTML_TEMPLATE = """
                 Занять стену за {{ king.price + 50.0 }} KGS
             </button>
         </form>
+
+        {% if show_instruction %}
+        <div class="instruction-box">
+            🚀 <b>ШАГ ДО ПОБЕДЫ!</b><br>
+            Чтобы твое имя появилось на стене, переведи ровно <b>{{ pending_price }} KGS</b> на мобильный баланс (или кошелек О!Деньги) номера: <b>{{ phone }}</b>.<br><br>
+            После подтверждения оплаты администратор обновит твою ссылку!
+        </div>
+        {% endif %}
     </div>
 
 </body>
 </html>
 """
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def home():
-    return render_template_string(HTML_TEMPLATE, king=king_data)
+    return render_template_string(HTML_TEMPLATE, king=king_data, show_instruction=False)
 
 @app.route('/buy', methods=['POST'])
 def buy():
@@ -102,14 +114,18 @@ def buy():
     new_name = request.form.get('username')
     new_link = request.form.get('userlink')
     
-    # Смена лидера в базе данных приложения
+    # Рассчитываем стоимость для нового участника
+    next_price = king_data["price"] + 50.00
+    
+    # Временное обновление данных на экране
     king_data["name"] = new_name
     king_data["link"] = new_link
-    king_data["price"] += 50.00  # Шаг повышения: +50 сомов
+    king_data["price"] = next_price
     
-    # Перенаправляем пользователя на оплату в твой кошелек О!
-    return redirect(MY_O_WALLET_LINK)
+    # Показываем инструкцию с номером телефона
+    return render_template_string(HTML_TEMPLATE, king=king_data, show_instruction=True, pending_price=next_price, phone=MY_PHONE_NUMBER)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+    
