@@ -1,0 +1,41 @@
+import time
+import telebot
+from threading import Thread
+
+# Твои данные уже вшиты
+BOT_TOKEN = "8800501422:AAF20hiO_pNIyQm6qYfsQJqaYvI3r-kie7o"
+GROUP_CHAT_ID = -1004358584206
+
+bot = telebot.TeleBot(BOT_TOKEN)
+
+# Функция для спама в ГРУППУ (300 секунд = 5 минут)
+def spammer():
+    while True:
+        try:
+            bot.send_message(GROUP_CHAT_ID, "го в мафию 🕵️‍♂️")
+        except Exception as e:
+            print(f"Ошибка спамера: {e}")
+        time.sleep(300)
+
+# Обработчик сообщений (ЛС и упоминания в группе)
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+def handle_messages(message):
+    try:
+        text_lower = message.text.lower() if message.text else ""
+        
+        if message.chat.type == 'private':
+            bot.reply_to(message, "привед")
+        elif message.chat.type in ['group', 'supergroup']:
+            bot_username = bot.get_me().username.lower()
+            is_reply = message.reply_to_message and message.reply_to_message.from_user.username.lower() == bot_username
+            has_name = "могги" in text_lower or f"@{bot_username}" in text_lower
+
+            if is_reply or has_name:
+                bot.reply_to(message, "ам такой")
+    except Exception as e:
+        print(f"Ошибка обработки: {e}")
+
+if __name__ == "__main__":
+    Thread(target=spammer, daemon=True).start()
+    bot.infinity_polling()
+  
