@@ -8,7 +8,7 @@ GROUP_CHAT_ID = -1004358584206
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-bot.remove_webnook()
+bot.remove_webhook()
 
 # Функция для спама в ГРУППУ (300 секунд = 5 минут)
 def spammer():
