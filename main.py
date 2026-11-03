@@ -37,6 +37,9 @@ def spammer():
         except Exception as e:
             print(f"Ошибка спамера: {e}")
         time.sleep(1)
+        
+        if user_username == "Zanyal0x":    
+                bot.reply_to(message, "Дааа факты♥️♥️")
 
 BAD_WORDS = [
     "дурак", "какашка", "плохой", "ишак", "эшек", "эщек", 
@@ -96,9 +99,6 @@ def handle_messages(message):
             if "как дела" in text_lower:
                 bot.reply_to(message, "нормик")
                 return
-                
-    except Exception as e:
-        print(f"Ошибка обработки: {e}")
 
 if __name__ == "__main__":
     # Запускаем фейковый веб-сервер в отдельном потоке, чтобы Render был доволен
