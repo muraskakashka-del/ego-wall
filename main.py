@@ -41,7 +41,7 @@ def spammer():
 BAD_WORDS = [
     "дурак", "какашка", "плохой", "ишак", "эшек", "эщек", 
     "еблан", "сгейн", "тупой", "тупоголовый", "сука", 
-    "осел", "козел", "пидор", "пидрила"
+    "осел", "козел", "пидор", "пидрила", "шлюха", "ебаная", "долбоеб", "шлюхан"
 ]
 
 @bot.message_handler(func=lambda message: True, content_types=['text'])
@@ -52,15 +52,21 @@ def handle_messages(message):
         
         is_private = message.chat.type == 'private'
         is_group = message.chat.type in ['group', 'supergroup']
+        bot_username = bot.get_me().username.lower()
         
-        # 1. Если пишет Zanyal0x (в любом регистре), бот ВСЕГДА отвечает этой фразой
-        if user_username == "zanyal0x":
-            bot.reply_to(message, "Дааа факты❤️❤️")
+        # Проверяем, является ли сообщение ответом (реплаем) именно на сообщение бота
+        is_reply_to_bot = message.reply_to_message and message.reply_to_message.from_user.username.lower() == bot_username
+
+        # --- Персональная логика для тебя (zanyal0x) ---
+        if user_username == "zanyal0x" and is_reply_to_bot:
+            if "люблю" in text_lower:
+                bot.reply_to(message, "я тебя тоже люблю♥️\ufe0f♥️\ufe0f")
+            else:
+                bot.reply_to(message, "Дааа факты❤️❤️")
             return
 
-        # Запоминаем ВСЕ текстовые сообщения, которые пишут люди (кроме команд бота и пустых строк)
+        # Запоминаем текстовые сообщения для пула (кроме команд бота)
         if message.text and "могги кто" not in text_lower:
-            # Сохраняем оригинальный текст (чтобы сохранить регистр и смайлики)
             MESSAGE_POOL.append(message.text)
 
         # Сохраняем имя/юзернейм человека в пул активных юзеров
@@ -68,15 +74,11 @@ def handle_messages(message):
             mention = f"@{message.from_user.username}" if message.from_user.username else message.from_user.first_name
             USER_POOL.add(mention)
 
-        is_reply = False
         has_name = False
-        
         if is_group:
-            bot_username = bot.get_me().username.lower()
-            is_reply = message.reply_to_message and message.reply_to_message.from_user.username.lower() == bot_username
             has_name = "марик" in text_lower or f"@{bot_username}" in text_lower
 
-        # 2. Обработка команды "могги кто"
+        # Обработка команды "могги кто"
         if "могги кто" in text_lower:
             start_index = text_lower.find("могги кто") + len("могги кто")
             question = message.text[start_index:].strip()
@@ -92,8 +94,8 @@ def handle_messages(message):
                 bot.reply_to(message, f"я думаю что ты {question}")
             return
 
-        # 3. Ответы на триггеры, если это ЛС или упомянули/ответили боту в группе
-        if is_private or (is_group and (is_reply or has_name)):
+        # Ответы на триггеры, если это ЛС или упомянули/ответили боту в группе
+        if is_private or (is_group and (is_reply_to_bot or has_name)):
             
             # Проверяем оскорбления
             has_bad_word = any(word in text_lower for word in BAD_WORDS)
@@ -114,8 +116,7 @@ def handle_messages(message):
                 bot.reply_to(message, "нормик")
                 return
 
-            # 🎲 РАНДОМНЫЙ ОТВЕТ ИЗ ЧАТА
-            # Сюда бот дойдет, только если это обращение к нему, но ни один верхний триггер не совпал
+            # Рандомный ответ из чата, если ничего другого не подошло
             if MESSAGE_POOL:
                 random_quote = random.choice(MESSAGE_POOL)
                 bot.reply_to(message, random_quote)
