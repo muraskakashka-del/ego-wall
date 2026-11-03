@@ -1,15 +1,19 @@
-
 import time
 import telebot
+import random
 from threading import Thread
 
 # Твои данные
-BOT_TOKEN = "8800501422:AAF20hiO_pNIyQm6qYfsQJqaYvI3r-kie7o"
-GROUP_CHAT_ID = -1004358584206
+BOT_TOKEN = "ТВОЙ_ОБНОВЛЕННЫЙ_ТОКЕН_БОТА"
+GROUP_CHAT_ID = -1004358584205
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
 bot.remove_webhook()
+
+# Список для сохранения активных участников группы (чтобы было из кого выбирать)
+# Хранит кортежи вида (username, first_name)
+USER_POOL = set()
 
 # Функция для спама в ГРУППУ (300 секунд = 5 минут)
 def spammer():
@@ -32,14 +36,16 @@ BAD_WORDS = [
 def handle_messages(message):
     try:
         text_lower = message.text.lower() if message.text else ""
-        
-        # Получаем юзернейм того, кто написал (в нижнем регистре для точности)
         user_username = message.from_user.username.lower() if message.from_user.username else ""
         
-        # Переменные для определения, адресовано ли сообщение боту в группе
         is_private = message.chat.type == 'private'
         is_group = message.chat.type in ['group', 'supergroup']
         
+        # Если пишут в группе, запоминаем пользователя для интерактива "могги кто..."
+        if is_group and message.from_user:
+            mention = f"@{message.from_user.username}" if message.from_user.username else message.from_user.first_name
+            USER_POOL.add(mention)
+
         is_reply = False
         has_name = False
         
@@ -48,7 +54,26 @@ def handle_messages(message):
             is_reply = message.reply_to_message and message.reply_to_message.from_user.username.lower() == bot_username
             has_name = "марик" in text_lower or f"@{bot_username}" in text_lower
 
-        # Бот реагирует, только если это ЛС ИЛИ его упомянули/ответили в группе
+        # Сначала проверяем глобальную команду "могги кто", для неё не обязательно тегать бота
+        if "могги кто" in text_lower:
+            # Находим, где заканчивается фраза "могги кто"
+            start_index = text_lower.find("могги кто") + len("могги кто")
+            question = message.text[start_index:].strip() # Вырезаем сам вопрос с оригинальным регистром
+            
+            if not question:
+                bot.reply_to(message, "После 'могги кто' нужно написать сам вопрос, например: 'могги кто дурак?'")
+                return
+
+            if USER_POOL:
+                # Выбираем случайного чела из тех, кого бот запомнил
+                random_user = random.choice(list(USER_POOL))
+                bot.reply_to(message, f"я думаю что {random_user} {question}")
+            else:
+                # На случай, если бот только запустился и еще никто не успел ничего написать
+                bot.reply_to(message, f"я думаю что ты {question}")
+            return
+
+        # Бот реагирует на остальное, только если это ЛС ИЛИ его упомянули/ответили в группе
         if is_private or (is_group and (is_reply or has_name)):
             
             # 1. Проверяем на плохие слова
@@ -58,7 +83,7 @@ def handle_messages(message):
                     bot.reply_to(message, "айике ты меня обидела.")
                 else:
                     bot.reply_to(message, "сам такой")
-                return # Выходим, чтобы не проверять на другие фразы
+                return
 
             # 2. Проверяем на приветствие
             if "привет" in text_lower:
