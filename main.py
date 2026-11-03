@@ -12,7 +12,8 @@ GROUP_CHAT_ID = -1004358584205
 bot = telebot.TeleBot(BOT_TOKEN)
 bot.remove_webhook()
 
-USER_POOL = set()
+USER_POOL = set()      # База участников чата для "могги кто"
+MESSAGE_POOL = []     # База сообщений для случайных ответов
 
 # --- МИНИ ВЕБ-СЕРВЕР ДЛЯ ОБМАНА RENDER ---
 class WebServerHandler(BaseHTTPRequestHandler):
@@ -35,7 +36,7 @@ def spammer():
             bot.send_message(GROUP_CHAT_ID, "го в мафию 🕵️‍♂️")
         except Exception as e:
             print(f"Ошибка спамера: {e}")
-        time.sleep(300) # Спам раз в 5 минут (300 секунд)
+        time.sleep(300)
 
 BAD_WORDS = [
     "дурак", "какашка", "плохой", "ишак", "эшек", "эщек", 
@@ -52,11 +53,17 @@ def handle_messages(message):
         is_private = message.chat.type == 'private'
         is_group = message.chat.type in ['group', 'supergroup']
         
-        # Если пишет Zanyal0x (в любом регистре), бот ВСЕГДА отвечает этой фразой и прекращает обработку
+        # 1. Если пишет Zanyal0x (в любом регистре), бот ВСЕГДА отвечает этой фразой
         if user_username == "zanyal0x":
             bot.reply_to(message, "Дааа факты❤️❤️")
             return
 
+        # Запоминаем ВСЕ текстовые сообщения, которые пишут люди (кроме команд бота и пустых строк)
+        if message.text and "могги кто" not in text_lower:
+            # Сохраняем оригинальный текст (чтобы сохранить регистр и смайлики)
+            MESSAGE_POOL.append(message.text)
+
+        # Сохраняем имя/юзернейм человека в пул активных юзеров
         if is_group and message.from_user:
             mention = f"@{message.from_user.username}" if message.from_user.username else message.from_user.first_name
             USER_POOL.add(mention)
@@ -69,7 +76,7 @@ def handle_messages(message):
             is_reply = message.reply_to_message and message.reply_to_message.from_user.username.lower() == bot_username
             has_name = "марик" in text_lower or f"@{bot_username}" in text_lower
 
-        # Команда "могги кто"
+        # 2. Обработка команды "могги кто"
         if "могги кто" in text_lower:
             start_index = text_lower.find("могги кто") + len("могги кто")
             question = message.text[start_index:].strip()
@@ -85,8 +92,10 @@ def handle_messages(message):
                 bot.reply_to(message, f"я думаю что ты {question}")
             return
 
-        # Ответы на триггеры, если это ЛС или упомянули в группе
+        # 3. Ответы на триггеры, если это ЛС или упомянули/ответили боту в группе
         if is_private or (is_group and (is_reply or has_name)):
+            
+            # Проверяем оскорбления
             has_bad_word = any(word in text_lower for word in BAD_WORDS)
             if has_bad_word:
                 if user_username == "aikosha_099sa":
@@ -95,13 +104,23 @@ def handle_messages(message):
                     bot.reply_to(message, "сам такой")
                 return
 
+            # Проверяем приветствие
             if "привет" in text_lower:
                 bot.reply_to(message, "привет")
                 return
 
+            # Проверяем "как дела"
             if "как дела" in text_lower:
                 bot.reply_to(message, "нормик")
                 return
+
+            # 🎲 РАНДОМНЫЙ ОТВЕТ ИЗ ЧАТА
+            # Сюда бот дойдет, только если это обращение к нему, но ни один верхний триггер не совпал
+            if MESSAGE_POOL:
+                random_quote = random.choice(MESSAGE_POOL)
+                bot.reply_to(message, random_quote)
+            else:
+                bot.reply_to(message, "Я пока запоминаю ваши сообщения... Поговорите еще!")
                 
     except Exception as e:
         print(f"Ошибка обработки: {e}")
