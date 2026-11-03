@@ -36,7 +36,7 @@ def spammer():
             bot.send_message(GROUP_CHAT_ID, "го в мафию 🕵️‍♂️")
         except Exception as e:
             print(f"Ошибка спамера: {e}")
-        time.sleep(300)
+        time.sleep(1)
 
 BAD_WORDS = [
     "дурак", "какашка", "плохой", "ишак", "эшек", "эщек", 
