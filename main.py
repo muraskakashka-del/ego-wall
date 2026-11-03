@@ -5,7 +5,7 @@ from threading import Thread
 
 # Твои данные
 BOT_TOKEN = "8800501422:AAF20hiO_pNIyQm6qYfsQJqaYvI3r-kie7o"
-GROUP_CHAT_ID = -1004358584205
+GROUP_CHAT_ID = -1004358584206
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -18,7 +18,7 @@ def spammer():
             bot.send_message(GROUP_CHAT_ID, "го в мафию 🕵️‍♂️")
         except Exception as e:
             print(f"Ошибка спамера: {e}")
-        time.sleep(0.1)
+        time.sleep(600)
 
 # Список оскорблений
 BAD_WORDS = [
