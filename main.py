@@ -6,7 +6,7 @@ from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # Твои данные
-BOT_TOKEN = "8800501422:AAF2OhIo_pNIyQm6qyfsqJjqaYvI3r-kie7o"
+BOT_TOKEN = "8800501422:AAF20hiO_pNIyQm6qYfsQJqaYvI3r-kie7o"
 GROUP_CHAT_ID = -1004358584205
 
 bot = telebot.TeleBot(BOT_TOKEN)
