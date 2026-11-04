@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = "8800501422:AAF20hiO_pNIyQm6qYfsQJqaYvI3r-kie7o"
 GROUP_CHAT_ID = -1004358584206
-MY_USERNAME = "zanyalox"  # Твой юзернейм
+MY_USERNAME = "Zanyal0x"  # Твой точный юзернейм с НУЛЕМ
 
 bot = TeleBot(BOT_TOKEN)
 bot.remove_webhook()
@@ -18,10 +18,8 @@ bot.remove_webhook()
 DB_FILE = "bot_data.db"
 
 def init_db():
-    """Создает таблицы, если они еще не созданы."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    # Таблица для хранения сообщений чата (для рандомного спама и ответов)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +27,6 @@ def init_db():
             text TEXT
         )
     ''')
-    # Таблица для хранения уникальных пользователей чата
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             chat_id INTEGER,
@@ -41,7 +38,8 @@ def init_db():
     conn.close()
 
 def save_message(chat_id, text):
-    """Сохраняет сообщение в базу данных."""
+    if not text:
+        return
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("INSERT INTO messages (chat_id, text) VALUES (?, ?)", (chat_id, text))
@@ -49,45 +47,24 @@ def save_message(chat_id, text):
     conn.close()
 
 def get_random_message(chat_id):
-    """Берет случайное сохраненное сообщение для конкретного чата."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("SELECT text FROM messages WHERE chat_id = ? ORDER BY RANDOM() LIMIT 1", (chat_id,))
     row = cursor.fetchone()
     conn.close()
-    return row[0] if row else None
-
-def get_all_messages_count(chat_id):
-    """Считает сколько всего сообщений в базе для чата."""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM messages WHERE chat_id = ?", (chat_id,))
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count
+    return row if row else None
 
 def save_user(chat_id, username):
-    """Сохраняет пользователя, если его еще нет."""
     if not username:
         return
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("INSERT OR IGNORE INTO users (chat_id, username) VALUES (?, ?)", (chat_id, username.lower()))
+    cursor.execute("INSERT OR IGNORE INTO users (chat_id, username) VALUES (?, ?)", (chat_id, username.lower().strip()))
     conn.commit()
     conn.close()
 
-def get_random_user(chat_id):
-    """Выбирает случайного пользователя из чата."""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT username FROM users WHERE chat_id = ? ORDER BY RANDOM() LIMIT 1", (chat_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else None
-
-# Инициализируем БД при старте скрипта
+# Инициализируем БД при старте
 init_db()
-
 
 # --- ВЕБ-СЕРВЕР ДЛЯ СВЯЗИ С РЕНДЕРОМ ---
 class WebServerHandler(BaseHTTPRequestHandler):
@@ -103,27 +80,21 @@ def run_web_server():
     print("Веб-сервер запущен на порту 8080...")
     httpd.serve_forever()
 
-
-# --- АВТОМАТИЧЕСКИЙ СПАМ КАЖДЫЙ ЧАС С РАНДОМНЫМ ЗАДЕРЖАНИЕМ ---
+# --- АВТОМАТИЧЕСКИЙ СПАМ КАЖДЫЙ ЧАС ---
 def spammer():
     while True:
         try:
-            # Каждый час выбираем случайное время задержки от 1 до 3600 секунд
             delay = random.randint(1, 3600)
-            print(f"[Спамер] Следующее сообщение будет отправлено через {delay} сек.")
+            print(f"[Спамер] Ожидание перед отправкой: {delay} сек.")
             time.sleep(delay)
             
-            # Пытаемся взять случайное сообщение из базы данных
             text_to_send = get_random_message(GROUP_CHAT_ID)
-            
             if text_to_send:
                 bot.send_message(GROUP_CHAT_ID, text_to_send)
                 print(f"[Спамер] Отправлено: {text_to_send}")
             else:
-                # Если база данных пустая, отправляем дефолтную фразу
                 bot.send_message(GROUP_CHAT_ID, "Я за вами слежу 👁")
             
-            # Дожидаемся остатка часа, чтобы цикл четко повторялся раз в 3600 секунд
             remaining_time = 3600 - delay
             if remaining_time > 0:
                 time.sleep(remaining_time)
@@ -131,7 +102,6 @@ def spammer():
         except Exception as e:
             print(f"Ошибка спамера: {e}")
             time.sleep(10)
-
 
 # --- ОБРАБОТКА СООБЩЕНИЙ ---
 BAD_WORDS = [
@@ -144,41 +114,47 @@ BAD_WORDS = [
 def handle_messages(message):
     try:
         chat_id = message.chat.id
-        text_lower = message.text.lower()
+        text_lower = message.text.lower().strip()
         
-        # Получаем юзернейм автора сообщения
         user_username = message.from_user.username
-        user_username_lower = user_username.lower() if user_username else ""
+        user_username_lower = user_username.lower().strip() if user_username else ""
+        target_my_username = MY_USERNAME.lower().strip()
 
-        # Сохраняем пользователя и текст в постоянную базу SQLite
+        # Сохраняем данные в базу
         save_user(chat_id, user_username)
         save_message(chat_id, message.text)
 
-        # 1. Твоя секретная команда «проверка»
-        if text_lower == "проверка" and user_username_lower == MY_USERNAME.lower():
+        bot_info = bot.get_me()
+
+        # ПРАВИЛО ОТВЕТА НА РЕПЛАЙ: Если ответили на сообщение бота — отвечаем ВСЕГДА
+        if message.reply_to_message and message.reply_to_message.from_user.id == bot_info.id:
+            random_quote = get_random_message(chat_id)
+            if random_quote:
+                bot.reply_to(message, random_quote)
+            else:
+                bot.reply_to(message, "Я тебя слышу!")
+            return
+
+        # ПРОВЕРКА ДЛЯ ТЕБЯ (Команда "проверка")
+        if text_lower == "проверка" and user_username_lower == target_my_username:
             bot.reply_to(message, "я тут❤️")
             return
 
-        # 2. Обработка ответов персонально для тебя (zanyalox)
-        if user_username_lower == MY_USERNAME.lower():
+        # ЛОГИКА ОТВЕТОВ ДЛЯ ТЕБЯ (Zanyal0x)
+        if user_username_lower == target_my_username:
             if "я тебя люблю" in text_lower:
                 bot.reply_to(message, "И я тебя люблю!!")
-                return
-            # Если ты написал что-то другое, бот просто молчит, как ты и просил
             return
 
-        # 3. Логика для всех остальных пользователей группы
+        # ЛОГИКА ДЛЯ ВСЕХ ОСТАЛЬНЫХ В ГРУППЕ
         if message.chat.type in ['group', 'supergroup']:
             
-            # Если кто-то чужой пишет «я тебя люблю»
             if "я тебя люблю" in text_lower:
                 bot.reply_to(message, "Но общался со мной ты, а в законах твоих ноль")
                 return
 
-            # Проверка матов
             has_bad_word = any(word in text_lower for word in BAD_WORDS)
             if has_bad_word:
-                # 33% шанс ответить жестко на мат
                 if random.randint(1, 3) == 1:
                     bot.reply_to(message, random.choice([
                         "Слышь, рот закрой",
@@ -187,12 +163,10 @@ def handle_messages(message):
                     ]))
                 return
 
-            # Обработка вопроса «кто ты»
             if "кто ты" in text_lower:
                 bot.reply_to(message, "Я бот, созданный великим разработчиком!")
                 return
 
-            # Шанс 1 из 10 ответить случайным сохраненным сообщением
             if random.randint(1, 10) == 1:
                 random_quote = get_random_message(chat_id)
                 if random_quote:
@@ -202,15 +176,11 @@ def handle_messages(message):
     except Exception as e:
         print(f"Ошибка в обработчике: {e}")
 
-
 # --- ЗАПУСК ПОТОКОВ ---
 if __name__ == "__main__":
-    # Поток веб-сервера для Render
     threading.Thread(target=run_web_server, daemon=True).start()
-    
-    # Поток ежечасного рандомного спамера
     threading.Thread(target=spammer, daemon=True).start()
     
-    # Основной поток бота
-    print("Бот успешно запущен и готов к работе!")
+    print("Бот успешно обновлен и запущен!")
     bot.infinity_polling()
+    
