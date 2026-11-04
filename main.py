@@ -118,7 +118,7 @@ def handle_messages(message):
                         bot.reply_to(message, "сам такой")
                     elif rndm == 2:
                         bot.reply_to(message, "поешь пизды")
-                    else rndm == 3:
+                    else:
                         bot.reply_to(message, "не общайся со мной так а то закопаю твою мать")
                 return
 
