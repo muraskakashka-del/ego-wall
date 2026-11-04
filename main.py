@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = "8800501422:AAF20hiO_pNIyQm6qYfsQJqaYvI3r-kie7o"
-GROUP_CHAT_ID = -1001515584825
+GROUP_CHAT_ID = -1004358584206
 MY_USERNAME = "zanyalox"  # Твой юзернейм
 
 bot = TeleBot(BOT_TOKEN)
