@@ -12,8 +12,9 @@ GROUP_CHAT_ID = -1004358584205
 bot = telebot.TeleBot(BOT_TOKEN)
 bot.remove_webhook()
 
-USER_POOL = set()      # База участников чата для "могги кто"
-MESSAGE_POOL = []     # База сообщений для случайных ответов
+# Раздельные базы данных для каждого чата в виде словарей
+USER_POOLS = {}      # Формат: {chat_id: {сет_пользователей}}
+MESSAGE_POOLS = {}   # Формат: {chat_id: [список_сообщений]}
 
 # --- МИНИ ВЕБ-СЕРВЕР ДЛЯ ОБМАНА RENDER ---
 class WebServerHandler(BaseHTTPRequestHandler):
@@ -41,12 +42,13 @@ def spammer():
 BAD_WORDS = [
     "дурак", "какашка", "плохой", "ишак", "эшек", "эщек", 
     "еблан", "сгейн", "тупой", "тупоголовый", "сука", 
-    "осел", "козел", "пидор", "пидрила", "шлюха", "ебаная", "долбоеб", "шлюхан"
+    "осел", "козел", "пидор", "пидрила"
 ]
 
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def handle_messages(message):
     try:
+        chat_id = message.chat.id
         text_lower = message.text.lower() if message.text else ""
         user_username = message.from_user.username.lower() if message.from_user.username else ""
         
@@ -57,22 +59,29 @@ def handle_messages(message):
         # Проверяем, является ли сообщение ответом (реплаем) именно на сообщение бота
         is_reply_to_bot = message.reply_to_message and message.reply_to_message.from_user.username.lower() == bot_username
 
+        # Инициализируем пустые базы данных для текущего чата, если их еще нет
+        if chat_id not in USER_POOLS:
+            USER_POOLS[chat_id] = set()
+        if chat_id not in MESSAGE_POOLS:
+            MESSAGE_POOLS[chat_id] = []
+
         # --- Персональная логика для тебя (zanyal0x) ---
         if user_username == "zanyal0x" and is_reply_to_bot:
             if "люблю" in text_lower:
-                bot.reply_to(message, "я тебя тоже люблю♥️\ufe0f♥️\ufe0f")
+                bot.reply_to(message, "я тебя тоже люблю\u2665\ufe0f\u2665\ufe0f")
             else:
-                bot.reply_to(message, "Дааа факты❤️❤️")
+                # На обычные реплаи без слова "люблю" бот теперь просто молчит
+                pass
             return
 
-        # Запоминаем текстовые сообщения для пула (кроме команд бота)
+        # Запоминаем сообщения СТРОГО для текущего чата
         if message.text and "могги кто" not in text_lower:
-            MESSAGE_POOL.append(message.text)
+            MESSAGE_POOLS[chat_id].append(message.text)
 
-        # Сохраняем имя/юзернейм человека в пул активных юзеров
+        # Сохраняем пользователя СТРОГО для текущего чата
         if is_group and message.from_user:
             mention = f"@{message.from_user.username}" if message.from_user.username else message.from_user.first_name
-            USER_POOL.add(mention)
+            USER_POOLS[chat_id].add(mention)
 
         has_name = False
         if is_group:
@@ -80,15 +89,16 @@ def handle_messages(message):
 
         # Обработка команды "могги кто"
         if "могги кто" in text_lower:
-            start_index = text_lower.find("могги кто") + len("могги кто")
+            start_index = text_lower.find("могги кто") + len("могги "+ "кто")
             question = message.text[start_index:].strip()
             
             if not question:
                 bot.reply_to(message, "После 'могги кто' нужно написать сам вопрос, например: 'могги кто дурак?'")
                 return
 
-            if USER_POOL:
-                random_user = random.choice(list(USER_POOL))
+            # Выбираем случайного юзера только из базы текущего чата chat_id
+            if USER_POOLS[chat_id]:
+                random_user = random.choice(list(USER_POOLS[chat_id]))
                 bot.reply_to(message, f"я думаю что {random_user} {question}")
             else:
                 bot.reply_to(message, f"я думаю что ты {question}")
@@ -116,9 +126,9 @@ def handle_messages(message):
                 bot.reply_to(message, "нормик")
                 return
 
-            # Рандомный ответ из чата, если ничего другого не подошло
-            if MESSAGE_POOL:
-                random_quote = random.choice(MESSAGE_POOL)
+            # Рандомный ответ из чата (берем только цитаты текущего чата chat_id)
+            if MESSAGE_POOLS[chat_id]:
+                random_quote = random.choice(MESSAGE_POOLS[chat_id])
                 bot.reply_to(message, random_quote)
             else:
                 bot.reply_to(message, "Я пока запоминаю ваши сообщения... Поговорите еще!")
