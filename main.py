@@ -37,12 +37,12 @@ def spammer():
             bot.send_message(GROUP_CHAT_ID, "го в мафию 🕵️‍♂️")
         except Exception as e:
             print(f"Ошибка спамера: {e}")
-        time.sleep(300)
+        time.sleep(10)
 
 BAD_WORDS = [
     "дурак", "какашка", "плохой", "ишак", "эшек", "эщек", 
     "еблан", "сгейн", "тупой", "тупоголовый", "сука", 
-    "осел", "козел", "пидор", "пидрила"
+    "осел", "козел", "пидор", "пидрила", "сын шлюхи"
 ]
 
 @bot.message_handler(func=lambda message: True, content_types=['text'])
@@ -113,7 +113,13 @@ def handle_messages(message):
                 if user_username == "aikosha_099sa":
                     bot.reply_to(message, "айике ты меня обидела.")
                 else:
-                    bot.reply_to(message, "сам такой")
+                    rndm = random.randint(1,3)
+                    if rndm == 1:
+                        bot.reply_to(message, "сам такой")
+                    elif rndm == 2:
+                        bot.reply_to(message, "поешь пизды")
+                    else rndm == 3:
+                        bot.reply_to(message, "не общайся со мной так а то закопаю твою мать")
                 return
 
             # Проверяем приветствие
